@@ -1,103 +1,167 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import BetCard from '@/components/BetCard';
+import BetSlip from '@/components/BetSlip';
+import UserStats from '@/components/UserStats';
+import BettingHistory from '@/components/BettingHistory';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { useBetting } from '@/hooks/useBetting';
+import { useSportsData } from '@/hooks/useSportsData';
+import { UserStats as UserStatsType } from '@/types/betting';
+
+interface BetSelection {
+  betId: string;
+  team: string;
+  odds: number;
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [betSelection, setBetSelection] = useState<BetSelection | null>(null);
+  const { placedBets } = useBetting();
+  
+  // Fetch sports data from API
+  const { bets, loading, error, refetch, categories } = useSportsData({
+    category: selectedCategory,
+    limit: 50,
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const handleBetSelection = (betId: string, team: string, odds: number) => {
+    setBetSelection({ betId, team, odds });
+  };
+
+  const userStats: UserStatsType = {
+    totalBets: placedBets.length,
+    wonBets: placedBets.filter(bet => bet.status === 'won').length,
+    totalWagered: placedBets.reduce((sum, bet) => sum + bet.amount, 0),
+    totalWinnings: placedBets.filter(bet => bet.status === 'won').reduce((sum, bet) => sum + bet.potentialWin, 0),
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0f1419]">
+      <Header />
+      
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* User Stats */}
+        <div className="mb-8">
+          <UserStats stats={userStats} />
+        </div>
+
+        {/* Header with Refresh Button */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Live Sports Betting</h2>
+            <p className="text-gray-400 text-sm mt-1">
+              Real-time odds powered by API • {bets.length} games available
+            </p>
+          </div>
+          <button
+            onClick={refetch}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh betting data"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <span className={loading ? 'animate-spin' : ''}>🔄</span>
+            <span className="hidden sm:inline">{loading ? 'Loading...' : 'Refresh'}</span>
+          </button>
+        </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 bg-red-500/10 border border-red-500 rounded-lg p-4 text-red-500">
+            <h3 className="font-semibold mb-2">Error Loading Data</h3>
+            <p className="text-sm">{error}</p>
+            <button
+              onClick={refetch}
+              className="mt-3 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition text-sm"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* Categories */}
+        <div className="mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                disabled={loading}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+                  selectedCategory === category.id
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-[#1a1f2e] text-gray-300 hover:bg-[#252b3d]'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <span>{category.icon}</span>
+                <span className="font-medium">{category.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Betting Cards */}
+          <div className="lg:col-span-2">
+            {/* Loading State */}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <LoadingSpinner />
+                <p className="text-gray-400 mt-4">Loading betting data...</p>
+              </div>
+            ) : bets.length > 0 ? (
+              <>
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold text-white">
+                    Available Bets
+                  </h2>
+                  <p className="text-gray-400 text-sm">
+                    {bets.length} games available
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  {bets.map((bet) => (
+                    <BetCard
+                      key={bet.id}
+                      bet={bet}
+                      onPlaceBet={handleBetSelection}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-400 text-lg">No games available for this category</p>
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                >
+                  View All Sports
+                </button>
+              </div>
+            )}
+
+            {/* Betting History */}
+            {!loading && <BettingHistory bets={placedBets} />}
+          </div>
+
+          {/* Bet Slip - Sticky */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-20">
+              <BetSlip
+                selection={betSelection}
+                onClear={() => setBetSelection(null)}
+              />
+            </div>
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      
+      <Footer />
     </div>
   );
 }
