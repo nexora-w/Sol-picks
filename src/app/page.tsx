@@ -58,15 +58,6 @@ export default function Home() {
               Real-time odds powered by API • {bets.length} games available
             </p>
           </div>
-          <button
-            onClick={refetch}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh betting data"
-          >
-            <span className={loading ? 'animate-spin' : ''}>🔄</span>
-            <span className="hidden sm:inline">{loading ? 'Loading...' : 'Refresh'}</span>
-          </button>
         </div>
 
         {/* Error State */}

@@ -5,11 +5,15 @@ import { useSportsData } from '@/hooks/useSportsData';
 import BetCard from './BetCard';
 import LoadingSpinner from './LoadingSpinner';
 
+interface LiveBettingFeedProps {
+  onBetSelection?: (betId: string, team: string, odds: number) => void;
+}
+
 /**
  * Example component demonstrating the Sports API endpoint usage
  * This component fetches live betting data from the API and displays it
  */
-export default function LiveBettingFeed() {
+export default function LiveBettingFeed({ onBetSelection }: LiveBettingFeedProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   // Use the custom hook to fetch data from the API
@@ -29,7 +33,7 @@ export default function LiveBettingFeed() {
   }, [refetch]);
 
   const handleBetSelection = (betId: string, team: string, odds: number) => {
-    setBetSelection({ betId, team, odds });
+    onBetSelection?.(betId, team, odds);
   };
 
   const handleRefresh = async () => {
