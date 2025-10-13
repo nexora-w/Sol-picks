@@ -75,6 +75,49 @@ function generateBalancedOdds(seed: number): { homeOdds: number; awayOdds: numbe
   return { homeOdds, awayOdds };
 }
 
+// Helper function to calculate live odds based on game state
+function calculateLiveOdds(
+  matchId: number,
+  homeScore: number,
+  awayScore: number,
+  progress: number,
+  baseHomeOdds: number,
+  baseAwayOdds: number
+): { homeOdds: number; awayOdds: number } {
+  const scoreDiff = homeScore - awayScore;
+  const timeRemaining = 1 - progress; // 0 to 1, where 1 is full time remaining
+  
+  // Change odds every 10 seconds for smoother updates
+  const timeSeed = Math.floor(Date.now() / 10000);
+  const volatility = seededRandom(matchId * timeSeed) * 0.15; // Small random fluctuation
+  
+  // Calculate odds adjustment based on score and time
+  let homeAdjustment = 0;
+  let awayAdjustment = 0;
+  
+  if (scoreDiff > 0) {
+    // Home team is winning - lower home odds, increase away odds
+    const advantage = Math.min(scoreDiff * 0.3 * (1 - timeRemaining * 0.5), 1.2);
+    homeAdjustment = -advantage;
+    awayAdjustment = advantage * 1.5;
+  } else if (scoreDiff < 0) {
+    // Away team is winning - lower away odds, increase home odds
+    const advantage = Math.min(Math.abs(scoreDiff) * 0.3 * (1 - timeRemaining * 0.5), 1.2);
+    awayAdjustment = -advantage;
+    homeAdjustment = advantage * 1.5;
+  }
+  
+  // Apply volatility for realistic odds movement
+  homeAdjustment += volatility - 0.075;
+  awayAdjustment += volatility - 0.075;
+  
+  // Calculate new odds with minimum of 1.01
+  const homeOdds = Math.max(1.01, parseFloat((baseHomeOdds + homeAdjustment).toFixed(2)));
+  const awayOdds = Math.max(1.01, parseFloat((baseAwayOdds + awayAdjustment).toFixed(2)));
+  
+  return { homeOdds, awayOdds };
+}
+
 // Helper function to shuffle array with seeded random for consistency
 function shuffleArray<T>(array: T[], seed: number): T[] {
   const shuffled = [...array];
@@ -354,10 +397,32 @@ function generateNBAGames(count: number, startId: number): Bet[] {
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
     const matchId = startId + i;
-    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
-    // Generate consistent start times: some in past (live/finished), some upcoming
-    const startTime = getConsistentStartTime(matchId, -24, 48);
+    const baseOdds = generateBalancedOdds(matchId);
+    
+    // Force first game to be live (started 10-30 minutes ago, duration is 48 min)
+    let startTime: Date;
+    if (i === 0) {
+      const now = new Date();
+      const minutesAgo = 10 + seededValue(matchId * 73, 0, 20); // 10-30 minutes ago
+      startTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+    } else {
+      // Generate consistent start times: some in past (live/finished), some upcoming
+      startTime = getConsistentStartTime(matchId, -24, 48);
+    }
+    
     const matchStatus = generateMatchStatus(startTime, 'Basketball', matchId);
+    
+    // Calculate live odds if game is in progress
+    let homeOdds = baseOdds.homeOdds;
+    let awayOdds = baseOdds.awayOdds;
+    
+    if (matchStatus.status === 'live' && matchStatus.homeScore !== undefined && matchStatus.awayScore !== undefined) {
+      const timeDiff = Date.now() - startTime.getTime();
+      const progress = timeDiff / (48 * 60 * 1000);
+      const liveOdds = calculateLiveOdds(matchId, matchStatus.homeScore, matchStatus.awayScore, progress, baseOdds.homeOdds, baseOdds.awayOdds);
+      homeOdds = liveOdds.homeOdds;
+      awayOdds = liveOdds.awayOdds;
+    }
     
     games.push({
       id: matchId.toString(),
@@ -384,9 +449,31 @@ function generateNFLGames(count: number, startId: number): Bet[] {
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
     const matchId = startId + i;
-    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
-    const startTime = getConsistentStartTime(matchId, -36, 60);
+    const baseOdds = generateBalancedOdds(matchId);
+    
+    // Force first game to be live (started 15-45 minutes ago, duration is 60 min)
+    let startTime: Date;
+    if (i === 0) {
+      const now = new Date();
+      const minutesAgo = 15 + seededValue(matchId * 73, 0, 30); // 15-45 minutes ago
+      startTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+    } else {
+      startTime = getConsistentStartTime(matchId, -36, 60);
+    }
+    
     const matchStatus = generateMatchStatus(startTime, 'Football', matchId);
+    
+    // Calculate live odds if game is in progress
+    let homeOdds = baseOdds.homeOdds;
+    let awayOdds = baseOdds.awayOdds;
+    
+    if (matchStatus.status === 'live' && matchStatus.homeScore !== undefined && matchStatus.awayScore !== undefined) {
+      const timeDiff = Date.now() - startTime.getTime();
+      const progress = timeDiff / (60 * 60 * 1000);
+      const liveOdds = calculateLiveOdds(matchId, matchStatus.homeScore, matchStatus.awayScore, progress, baseOdds.homeOdds, baseOdds.awayOdds);
+      homeOdds = liveOdds.homeOdds;
+      awayOdds = liveOdds.awayOdds;
+    }
     
     games.push({
       id: matchId.toString(),
@@ -415,6 +502,7 @@ function generateSoccerGames(count: number, startId: number): Bet[] {
   ];
   
   let gameId = startId;
+  let globalIndex = 0;
   const gamesPerLeague = Math.ceil(count / leagues.length);
   
   leagues.forEach(league => {
@@ -424,10 +512,46 @@ function generateSoccerGames(count: number, startId: number): Bet[] {
     
     for (let i = 0; i < numGames; i++) {
       const matchId = gameId;
-      const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
-      const drawOdds = generateOdds(matchId + 1000, 2.8, 3.8);
-      const startTime = getConsistentStartTime(matchId, -48, 72);
+      const baseOdds = generateBalancedOdds(matchId);
+      const baseDrawOdds = generateOdds(matchId + 1000, 2.8, 3.8);
+      
+      // Force first game to be live (started 20-60 minutes ago, duration is 95 min)
+      let startTime: Date;
+      if (globalIndex === 0) {
+        const now = new Date();
+        const minutesAgo = 20 + seededValue(matchId * 73, 0, 40); // 20-60 minutes ago
+        startTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+      } else {
+        startTime = getConsistentStartTime(matchId, -48, 72);
+      }
+      
       const matchStatus = generateMatchStatus(startTime, 'Soccer', matchId);
+      
+      // Calculate live odds if game is in progress
+      let homeOdds = baseOdds.homeOdds;
+      let awayOdds = baseOdds.awayOdds;
+      let drawOdds = baseDrawOdds;
+      
+      if (matchStatus.status === 'live' && matchStatus.homeScore !== undefined && matchStatus.awayScore !== undefined) {
+        const timeDiff = Date.now() - startTime.getTime();
+        const progress = timeDiff / (95 * 60 * 1000);
+        const liveOdds = calculateLiveOdds(matchId, matchStatus.homeScore, matchStatus.awayScore, progress, baseOdds.homeOdds, baseOdds.awayOdds);
+        homeOdds = liveOdds.homeOdds;
+        awayOdds = liveOdds.awayOdds;
+        
+        // Adjust draw odds based on current score
+        const scoreDiff = Math.abs(matchStatus.homeScore - matchStatus.awayScore);
+        const timeSeed = Math.floor(Date.now() / 10000);
+        const volatility = seededRandom(matchId * timeSeed) * 0.2;
+        
+        if (scoreDiff === 0) {
+          // Game is tied - lower draw odds
+          drawOdds = Math.max(1.5, parseFloat((baseDrawOdds - 0.8 - (1 - progress) * 0.5 + volatility).toFixed(2)));
+        } else {
+          // Game has a leader - increase draw odds
+          drawOdds = Math.max(2.0, parseFloat((baseDrawOdds + scoreDiff * 0.4 + volatility).toFixed(2)));
+        }
+      }
       
       games.push({
         id: matchId.toString(),
@@ -444,6 +568,7 @@ function generateSoccerGames(count: number, startId: number): Bet[] {
       });
       
       gameId++;
+      globalIndex++;
     }
   });
   
@@ -458,9 +583,21 @@ function generateMLBGames(count: number, startId: number): Bet[] {
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
     const matchId = startId + i;
-    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const baseOdds = generateBalancedOdds(matchId);
     const startTime = getConsistentStartTime(matchId, -18, 36);
     const matchStatus = generateMatchStatus(startTime, 'Baseball', matchId);
+    
+    // Calculate live odds if game is in progress
+    let homeOdds = baseOdds.homeOdds;
+    let awayOdds = baseOdds.awayOdds;
+    
+    if (matchStatus.status === 'live' && matchStatus.homeScore !== undefined && matchStatus.awayScore !== undefined) {
+      const timeDiff = Date.now() - startTime.getTime();
+      const progress = timeDiff / (180 * 60 * 1000);
+      const liveOdds = calculateLiveOdds(matchId, matchStatus.homeScore, matchStatus.awayScore, progress, baseOdds.homeOdds, baseOdds.awayOdds);
+      homeOdds = liveOdds.homeOdds;
+      awayOdds = liveOdds.awayOdds;
+    }
     
     games.push({
       id: matchId.toString(),
@@ -487,9 +624,21 @@ function generateNHLGames(count: number, startId: number): Bet[] {
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
     const matchId = startId + i;
-    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const baseOdds = generateBalancedOdds(matchId);
     const startTime = getConsistentStartTime(matchId, -24, 48);
     const matchStatus = generateMatchStatus(startTime, 'Hockey', matchId);
+    
+    // Calculate live odds if game is in progress
+    let homeOdds = baseOdds.homeOdds;
+    let awayOdds = baseOdds.awayOdds;
+    
+    if (matchStatus.status === 'live' && matchStatus.homeScore !== undefined && matchStatus.awayScore !== undefined) {
+      const timeDiff = Date.now() - startTime.getTime();
+      const progress = timeDiff / (60 * 60 * 1000);
+      const liveOdds = calculateLiveOdds(matchId, matchStatus.homeScore, matchStatus.awayScore, progress, baseOdds.homeOdds, baseOdds.awayOdds);
+      homeOdds = liveOdds.homeOdds;
+      awayOdds = liveOdds.awayOdds;
+    }
     
     games.push({
       id: matchId.toString(),
@@ -553,9 +702,21 @@ function generateTennisMatches(count: number, startId: number): Bet[] {
   
   for (let i = 0; i < count && i * 2 < shuffledPlayers.length; i++) {
     const matchId = startId + i;
-    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const baseOdds = generateBalancedOdds(matchId);
     const startTime = getConsistentStartTime(matchId, -36, 60);
     const matchStatus = generateMatchStatus(startTime, 'Tennis', matchId);
+    
+    // Calculate live odds if game is in progress
+    let homeOdds = baseOdds.homeOdds;
+    let awayOdds = baseOdds.awayOdds;
+    
+    if (matchStatus.status === 'live' && matchStatus.homeScore !== undefined && matchStatus.awayScore !== undefined) {
+      const timeDiff = Date.now() - startTime.getTime();
+      const progress = timeDiff / (150 * 60 * 1000);
+      const liveOdds = calculateLiveOdds(matchId, matchStatus.homeScore, matchStatus.awayScore, progress, baseOdds.homeOdds, baseOdds.awayOdds);
+      homeOdds = liveOdds.homeOdds;
+      awayOdds = liveOdds.awayOdds;
+    }
     
     const tournaments = ['Australian Open', 'French Open', 'Wimbledon', 'US Open', 'ATP Finals'];
     const tournamentIndex = Math.floor(seededValue(matchId * 79, 0, tournaments.length));

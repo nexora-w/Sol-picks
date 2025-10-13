@@ -37,25 +37,14 @@ export default function Footer() {
             <ul className="space-y-2 text-gray-400 text-sm">
               <li className="hover:text-purple-400 cursor-pointer transition-colors">Discord</li>
               <li className="hover:text-purple-400 cursor-pointer transition-colors">Twitter</li>
-              <li className="hover:text-purple-400 cursor-pointer transition-colors">GitHub</li>
               <li className="hover:text-purple-400 cursor-pointer transition-colors">Documentation</li>
             </ul>
           </div>
         </div>
         
-        <div className="border-t border-[#2a3142] mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center">
+        <div className="border-t border-[#2a3142] mt-8 pt-8 flex flex-col sm:flex-row justify-center items-center">
           <p className="text-gray-400 text-sm">
             © 2025 SolPick. Built on Solana.
-          </p>
-          <div className="flex items-center gap-2 mt-4 sm:mt-0">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-gray-400 text-sm">Devnet Live</span>
-          </div>
-        </div>
-        
-        <div className="mt-4 text-center">
-          <p className="text-gray-500 text-xs">
-            ⚠️ Demo project for educational purposes only. Please gamble responsibly.
           </p>
         </div>
       </div>

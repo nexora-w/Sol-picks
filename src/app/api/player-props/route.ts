@@ -29,6 +29,64 @@ function generateOverUnderOdds(seed: number): { overOdds: number; underOdds: num
   return { overOdds, underOdds };
 }
 
+// Helper function to calculate live prop odds based on current performance
+function calculateLivePropOdds(
+  propId: number,
+  currentValue: number,
+  line: number,
+  progress: number,
+  baseOverOdds: number,
+  baseUnderOdds: number
+): { overOdds: number; underOdds: number } {
+  const timeRemaining = 1 - progress;
+  
+  // Change odds every 10 seconds
+  const timeSeed = Math.floor(Date.now() / 10000);
+  const volatility = seededRandom(propId * timeSeed) * 0.1;
+  
+  // Calculate how player is performing relative to their line
+  const expectedProgress = line * progress;
+  const performanceDiff = currentValue - expectedProgress;
+  
+  // Adjust odds based on performance and time remaining
+  let overAdjustment = 0;
+  let underAdjustment = 0;
+  
+  if (performanceDiff > 0) {
+    // Player is ahead of pace - lower over odds, increase under odds
+    const advantage = Math.min(performanceDiff * 0.2 * (1 - timeRemaining * 0.3), 0.8);
+    overAdjustment = -advantage;
+    underAdjustment = advantage;
+  } else if (performanceDiff < 0) {
+    // Player is behind pace - increase over odds, lower under odds
+    const disadvantage = Math.min(Math.abs(performanceDiff) * 0.2 * (1 - timeRemaining * 0.3), 0.8);
+    overAdjustment = disadvantage;
+    underAdjustment = -disadvantage;
+  }
+  
+  // As time runs out, odds become more extreme based on current status
+  if (timeRemaining < 0.25) {
+    const urgency = (0.25 - timeRemaining) * 4; // 0 to 1
+    if (currentValue > line) {
+      overAdjustment -= urgency * 0.5;
+      underAdjustment += urgency * 0.8;
+    } else if (currentValue < line) {
+      overAdjustment += urgency * 0.8;
+      underAdjustment -= urgency * 0.5;
+    }
+  }
+  
+  // Apply volatility
+  overAdjustment += volatility - 0.05;
+  underAdjustment += volatility - 0.05;
+  
+  // Calculate new odds with minimum of 1.01
+  const overOdds = Math.max(1.01, parseFloat((baseOverOdds + overAdjustment).toFixed(2)));
+  const underOdds = Math.max(1.01, parseFloat((baseUnderOdds + underAdjustment).toFixed(2)));
+  
+  return { overOdds, underOdds };
+}
+
 // Comprehensive player data with real images
 const playerData = {
   nba: [
@@ -201,7 +259,16 @@ function generateNBAProps(count: number, startId: number): PlayerProp[] {
   shuffledPlayers.forEach((player, index) => {
     const propId = startId + index;
     const matchup = gameMatchups.nba[Math.floor(seededValue(propId * 11, 0, gameMatchups.nba.length))];
-    const startTime = getConsistentStartTime(propId, -2, 48);
+    
+    // Force first player's game to be live (started 10-30 minutes ago, duration is 48 min)
+    let startTime: Date;
+    if (index === 0) {
+      const now = new Date();
+      const minutesAgo = 10 + seededValue(propId * 73, 0, 20); // 10-30 minutes ago
+      startTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+    } else {
+      startTime = getConsistentStartTime(propId, -2, 48);
+    }
     
     // Generate multiple prop types per player
     const statTypes: Array<{ type: 'points' | 'rebounds' | 'assists' | 'three_pointers'; line: number }> = [
@@ -212,17 +279,25 @@ function generateNBAProps(count: number, startId: number): PlayerProp[] {
     
     statTypes.forEach((stat, statIndex) => {
       const currentPropId = propId + statIndex * 1000;
-      const { overOdds, underOdds } = generateOverUnderOdds(currentPropId);
+      const baseOdds = generateOverUnderOdds(currentPropId);
       const status = getPropStatus(startTime, currentPropId, 'Basketball');
       
       // Calculate current value for live props
       let currentValue: number | undefined;
+      let overOdds = baseOdds.overOdds;
+      let underOdds = baseOdds.underOdds;
+      
       if (status.status === 'live') {
         const now = Date.now();
         const timeDiff = now - startTime.getTime();
         const progress = timeDiff / (48 * 60 * 1000);
         const performanceMultiplier = seededValue(currentPropId * 97 + Math.floor(now / 5000), 0.4, 1.6);
         currentValue = Math.floor(stat.line * progress * performanceMultiplier);
+        
+        // Calculate dynamic odds based on current performance
+        const liveOdds = calculateLivePropOdds(currentPropId, currentValue, stat.line, progress, baseOdds.overOdds, baseOdds.underOdds);
+        overOdds = liveOdds.overOdds;
+        underOdds = liveOdds.underOdds;
       }
       
       props.push({
@@ -260,7 +335,16 @@ function generateNFLProps(count: number, startId: number): PlayerProp[] {
   shuffledPlayers.forEach((player, index) => {
     const propId = startId + index;
     const matchup = gameMatchups.nfl[Math.floor(seededValue(propId * 13, 0, gameMatchups.nfl.length))];
-    const startTime = getConsistentStartTime(propId, -1, 60);
+    
+    // Force first player's game to be live (started 15-45 minutes ago, duration is 60 min)
+    let startTime: Date;
+    if (index === 0) {
+      const now = new Date();
+      const minutesAgo = 15 + seededValue(propId * 73, 0, 30); // 15-45 minutes ago
+      startTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+    } else {
+      startTime = getConsistentStartTime(propId, -1, 60);
+    }
     
     const statTypes: Array<{ type: 'yards' | 'touchdowns' | 'receptions'; line: number }> = [];
     if (player.yards > 0) statTypes.push({ type: 'yards', line: player.yards });
@@ -269,10 +353,13 @@ function generateNFLProps(count: number, startId: number): PlayerProp[] {
     
     statTypes.forEach((stat, statIndex) => {
       const currentPropId = propId + statIndex * 1000;
-      const { overOdds, underOdds } = generateOverUnderOdds(currentPropId);
+      const baseOdds = generateOverUnderOdds(currentPropId);
       const status = getPropStatus(startTime, currentPropId, 'Football');
       
       let currentValue: number | undefined;
+      let overOdds = baseOdds.overOdds;
+      let underOdds = baseOdds.underOdds;
+      
       if (status.status === 'live') {
         const now = Date.now();
         const timeDiff = now - startTime.getTime();
@@ -281,6 +368,11 @@ function generateNFLProps(count: number, startId: number): PlayerProp[] {
         currentValue = stat.type === 'yards' 
           ? Math.floor(stat.line * progress * performanceMultiplier)
           : Math.floor(stat.line * progress * performanceMultiplier * 10) / 10;
+        
+        // Calculate dynamic odds based on current performance
+        const liveOdds = calculateLivePropOdds(currentPropId, currentValue, stat.line, progress, baseOdds.overOdds, baseOdds.underOdds);
+        overOdds = liveOdds.overOdds;
+        underOdds = liveOdds.underOdds;
       }
       
       props.push({
@@ -326,16 +418,24 @@ function generateMLBProps(count: number, startId: number): PlayerProp[] {
     
     statTypes.forEach((stat, statIndex) => {
       const currentPropId = propId + statIndex * 1000;
-      const { overOdds, underOdds } = generateOverUnderOdds(currentPropId);
+      const baseOdds = generateOverUnderOdds(currentPropId);
       const status = getPropStatus(startTime, currentPropId, 'Baseball');
       
       let currentValue: number | undefined;
+      let overOdds = baseOdds.overOdds;
+      let underOdds = baseOdds.underOdds;
+      
       if (status.status === 'live') {
         const now = Date.now();
         const timeDiff = now - startTime.getTime();
         const progress = timeDiff / (180 * 60 * 1000);
         const performanceMultiplier = seededValue(currentPropId * 97 + Math.floor(now / 5000), 0.3, 1.8);
         currentValue = Math.floor(stat.line * progress * performanceMultiplier);
+        
+        // Calculate dynamic odds based on current performance
+        const liveOdds = calculateLivePropOdds(currentPropId, currentValue, stat.line, progress, baseOdds.overOdds, baseOdds.underOdds);
+        overOdds = liveOdds.overOdds;
+        underOdds = liveOdds.underOdds;
       }
       
       props.push({
@@ -373,7 +473,16 @@ function generateSoccerProps(count: number, startId: number): PlayerProp[] {
   shuffledPlayers.forEach((player, index) => {
     const propId = startId + index;
     const matchup = gameMatchups.soccer[Math.floor(seededValue(propId * 19, 0, gameMatchups.soccer.length))];
-    const startTime = getConsistentStartTime(propId, -2, 72);
+    
+    // Force first player's game to be live (started 20-60 minutes ago, duration is 95 min)
+    let startTime: Date;
+    if (index === 0) {
+      const now = new Date();
+      const minutesAgo = 20 + seededValue(propId * 73, 0, 40); // 20-60 minutes ago
+      startTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+    } else {
+      startTime = getConsistentStartTime(propId, -2, 72);
+    }
     
     const statTypes: Array<{ type: 'goals' | 'shots'; line: number }> = [
       { type: 'goals', line: player.goals },
@@ -382,16 +491,24 @@ function generateSoccerProps(count: number, startId: number): PlayerProp[] {
     
     statTypes.forEach((stat, statIndex) => {
       const currentPropId = propId + statIndex * 1000;
-      const { overOdds, underOdds } = generateOverUnderOdds(currentPropId);
+      const baseOdds = generateOverUnderOdds(currentPropId);
       const status = getPropStatus(startTime, currentPropId, 'Soccer');
       
       let currentValue: number | undefined;
+      let overOdds = baseOdds.overOdds;
+      let underOdds = baseOdds.underOdds;
+      
       if (status.status === 'live') {
         const now = Date.now();
         const timeDiff = now - startTime.getTime();
         const progress = timeDiff / (95 * 60 * 1000);
         const performanceMultiplier = seededValue(currentPropId * 97 + Math.floor(now / 5000), 0.2, 2.0);
         currentValue = Math.floor(stat.line * progress * performanceMultiplier);
+        
+        // Calculate dynamic odds based on current performance
+        const liveOdds = calculateLivePropOdds(currentPropId, currentValue, stat.line, progress, baseOdds.overOdds, baseOdds.underOdds);
+        overOdds = liveOdds.overOdds;
+        underOdds = liveOdds.underOdds;
       }
       
       props.push({
