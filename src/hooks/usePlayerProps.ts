@@ -1,53 +1,43 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bet } from '@/types/betting';
+import { PlayerProp } from '@/types/betting';
 
-interface UseSportsDataOptions {
+interface UsePlayerPropsOptions {
   category?: string;
   limit?: number;
   autoFetch?: boolean;
   refreshInterval?: number; // in milliseconds
 }
 
-interface SportsDataResponse {
+interface PlayerPropsDataResponse {
   success: boolean;
   count: number;
   category: string;
-  data: Bet[];
-  categories: Array<{
-    id: string;
-    name: string;
-    icon: string;
-  }>;
+  data: PlayerProp[];
 }
 
-interface UseSportsDataReturn {
-  bets: Bet[];
+interface UsePlayerPropsReturn {
+  props: PlayerProp[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  categories: Array<{
-    id: string;
-    name: string;
-    icon: string;
-  }>;
 }
 
 /**
- * Custom hook to fetch sports betting data from the API
+ * Custom hook to fetch player props data from the API
  * 
  * @param options Configuration options
  * @param options.category Sport category to filter ('all', 'basketball', 'football', etc.)
- * @param options.limit Maximum number of games to fetch
+ * @param options.limit Maximum number of props to fetch
  * @param options.autoFetch Whether to automatically fetch data on mount (default: true)
  * @param options.refreshInterval Auto-refresh interval in milliseconds (optional)
  * 
  * @example
  * ```tsx
  * function MyComponent() {
- *   const { bets, loading, error, refetch } = useSportsData({ 
+ *   const { props, loading, error, refetch } = usePlayerProps({ 
  *     category: 'basketball',
- *     limit: 10,
- *     refreshInterval: 2000 // Auto-refresh every 2 seconds
+ *     limit: 20,
+ *     refreshInterval: 5000 // Auto-refresh every 5 seconds
  *   });
  *   
  *   if (loading) return <div>Loading...</div>;
@@ -55,8 +45,8 @@ interface UseSportsDataReturn {
  *   
  *   return (
  *     <div>
- *       {bets.map(bet => (
- *         <div key={bet.id}>{bet.homeTeam} vs {bet.awayTeam}</div>
+ *       {props.map(prop => (
+ *         <div key={prop.id}>{prop.playerName} - {prop.statType}</div>
  *       ))}
  *       <button onClick={refetch}>Refresh</button>
  *     </div>
@@ -64,7 +54,7 @@ interface UseSportsDataReturn {
  * }
  * ```
  */
-export function useSportsData(options: UseSportsDataOptions = {}): UseSportsDataReturn {
+export function usePlayerProps(options: UsePlayerPropsOptions = {}): UsePlayerPropsReturn {
   const { 
     category = 'all', 
     limit = 50,
@@ -72,14 +62,9 @@ export function useSportsData(options: UseSportsDataOptions = {}): UseSportsData
     refreshInterval 
   } = options;
 
-  const [bets, setBets] = useState<Bet[]>([]);
+  const [props, setProps] = useState<PlayerProp[]>([]);
   const [loading, setLoading] = useState<boolean>(autoFetch);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{
-    id: string;
-    name: string;
-    icon: string;
-  }>>([]);
 
   const fetchData = useCallback(async (showLoading = true) => {
     // Only show loading spinner on initial load or manual refetch
@@ -94,32 +79,29 @@ export function useSportsData(options: UseSportsDataOptions = {}): UseSportsData
         limit: limit.toString(),
       });
 
-      const response = await fetch(`/api/sports?${params.toString()}`);
+      const response = await fetch(`/api/player-props?${params.toString()}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: SportsDataResponse = await response.json();
+      const data: PlayerPropsDataResponse = await response.json();
 
       if (data.success) {
         // Convert string dates back to Date objects
-        const betsWithDates = data.data.map(bet => ({
-          ...bet,
-          startTime: new Date(bet.startTime),
+        const propsWithDates = data.data.map(prop => ({
+          ...prop,
+          startTime: new Date(prop.startTime),
         }));
         
-        setBets(betsWithDates);
-        if (data.categories) {
-          setCategories(data.categories);
-        }
+        setProps(propsWithDates);
       } else {
-        throw new Error('Failed to fetch sports data');
+        throw new Error('Failed to fetch player props data');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('Error fetching sports data:', err);
+      console.error('Error fetching player props data:', err);
     } finally {
       setLoading(false);
     }
@@ -148,43 +130,42 @@ export function useSportsData(options: UseSportsDataOptions = {}): UseSportsData
   }, [fetchData]);
 
   return {
-    bets,
+    props,
     loading,
     error,
     refetch,
-    categories,
   };
 }
 
 /**
- * Hook to fetch sports data with manual trigger
+ * Hook to fetch player props with manual trigger
  * Useful when you want to control when the data is fetched
  * 
  * @example
  * ```tsx
  * function MyComponent() {
- *   const { bets, loading, fetchBets } = useLazySportsData();
+ *   const { props, loading, fetchProps } = useLazyPlayerProps();
  *   
  *   return (
  *     <div>
- *       <button onClick={() => fetchBets({ category: 'basketball' })}>
- *         Load Basketball Games
+ *       <button onClick={() => fetchProps({ category: 'basketball' })}>
+ *         Load Basketball Props
  *       </button>
  *       {loading && <div>Loading...</div>}
- *       {bets.map(bet => (
- *         <div key={bet.id}>{bet.homeTeam} vs {bet.awayTeam}</div>
+ *       {props.map(prop => (
+ *         <div key={prop.id}>{prop.playerName} - {prop.statType}</div>
  *       ))}
  *     </div>
  *   );
  * }
  * ```
  */
-export function useLazySportsData() {
-  const [bets, setBets] = useState<Bet[]>([]);
+export function useLazyPlayerProps() {
+  const [props, setProps] = useState<PlayerProp[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBets = useCallback(async (options: Omit<UseSportsDataOptions, 'autoFetch'> = {}) => {
+  const fetchProps = useCallback(async (options: Omit<UsePlayerPropsOptions, 'autoFetch'> = {}) => {
     const { category = 'all', limit = 50 } = options;
     
     setLoading(true);
@@ -196,33 +177,33 @@ export function useLazySportsData() {
         limit: limit.toString(),
       });
 
-      const response = await fetch(`/api/sports?${params.toString()}`);
-      const data: SportsDataResponse = await response.json();
+      const response = await fetch(`/api/player-props?${params.toString()}`);
+      const data: PlayerPropsDataResponse = await response.json();
 
       if (data.success) {
-        const betsWithDates = data.data.map(bet => ({
-          ...bet,
-          startTime: new Date(bet.startTime),
+        const propsWithDates = data.data.map(prop => ({
+          ...prop,
+          startTime: new Date(prop.startTime),
         }));
         
-        setBets(betsWithDates);
+        setProps(propsWithDates);
       } else {
-        throw new Error('Failed to fetch sports data');
+        throw new Error('Failed to fetch player props data');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('Error fetching sports data:', err);
+      console.error('Error fetching player props data:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   return {
-    bets,
+    props,
     loading,
     error,
-    fetchBets,
+    fetchProps,
   };
 }
 

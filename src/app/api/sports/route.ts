@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Bet } from '@/types/betting';
 
+// Seeded random number generator for deterministic results
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+// Generate deterministic value based on seed
+function seededValue(seed: number, min: number, max: number): number {
+  return min + seededRandom(seed) * (max - min);
+}
+
 // Comprehensive team data for realistic matchups
 const teams = {
   nba: [
@@ -51,31 +62,31 @@ const teams = {
   ]
 };
 
-// Helper function to generate random odds
-function generateOdds(min: number = 1.5, max: number = 3.0): number {
-  return parseFloat((Math.random() * (max - min) + min).toFixed(2));
+// Helper function to generate random odds with seeded random
+function generateOdds(seed: number, min: number = 1.5, max: number = 3.0): number {
+  return parseFloat((seededRandom(seed) * (max - min) + min).toFixed(2));
 }
 
 // Helper function to generate balanced odds for two teams
-function generateBalancedOdds(): { homeOdds: number; awayOdds: number } {
-  const homeOdds = generateOdds(1.5, 2.8);
+function generateBalancedOdds(seed: number): { homeOdds: number; awayOdds: number } {
+  const homeOdds = generateOdds(seed, 1.5, 2.8);
   // Make away odds inversely correlated to home odds
-  const awayOdds = parseFloat((3.3 - homeOdds + Math.random() * 0.4).toFixed(2));
+  const awayOdds = parseFloat((3.3 - homeOdds + seededRandom(seed + 1) * 0.4).toFixed(2));
   return { homeOdds, awayOdds };
 }
 
-// Helper function to shuffle array
-function shuffleArray<T>(array: T[]): T[] {
+// Helper function to shuffle array with seeded random for consistency
+function shuffleArray<T>(array: T[], seed: number): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(seededRandom(seed + i) * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
 }
 
 // Helper function to generate match status and scores
-function generateMatchStatus(startTime: Date, sport: string): {
+function generateMatchStatus(startTime: Date, sport: string, matchId: number): {
   status: 'upcoming' | 'live' | 'finished';
   homeScore?: number;
   awayScore?: number;
@@ -98,9 +109,9 @@ function generateMatchStatus(startTime: Date, sport: string): {
       const matchMinutes = Math.floor(timeDiff / (1000 * 60));
       
       if (matchMinutes >= 95) {
-        // Match finished
-        const homeScore = Math.floor(Math.random() * 4);
-        const awayScore = Math.floor(Math.random() * 4);
+        // Match finished - use deterministic scores
+        const homeScore = Math.floor(seededValue(matchId * 7, 0, 4));
+        const awayScore = Math.floor(seededValue(matchId * 11, 0, 4));
         return {
           status: 'finished',
           homeScore,
@@ -109,10 +120,14 @@ function generateMatchStatus(startTime: Date, sport: string): {
           isFinished: true
         };
       } else if (matchMinutes < 90) {
-        // First half or second half
+        // First half or second half - scores progress with time
         const displayMinute = matchMinutes > 45 ? Math.min(matchMinutes, 90) : matchMinutes;
-        const homeScore = Math.floor(Math.random() * 3);
-        const awayScore = Math.floor(Math.random() * 3);
+        const finalHomeScore = Math.floor(seededValue(matchId * 7, 0, 4));
+        const finalAwayScore = Math.floor(seededValue(matchId * 11, 0, 4));
+        // Scale scores based on match progress
+        const progress = matchMinutes / 90;
+        const homeScore = Math.floor(finalHomeScore * progress);
+        const awayScore = Math.floor(finalAwayScore * progress);
         return {
           status: 'live',
           homeScore,
@@ -123,8 +138,8 @@ function generateMatchStatus(startTime: Date, sport: string): {
       } else {
         // Extra time (90-95 minutes)
         const extraTime = matchMinutes - 90;
-        const homeScore = Math.floor(Math.random() * 4);
-        const awayScore = Math.floor(Math.random() * 4);
+        const homeScore = Math.floor(seededValue(matchId * 7, 0, 4));
+        const awayScore = Math.floor(seededValue(matchId * 11, 0, 4));
         return {
           status: 'live',
           homeScore,
@@ -140,8 +155,8 @@ function generateMatchStatus(startTime: Date, sport: string): {
       const matchMinutes = Math.floor(timeDiff / (1000 * 60));
       
       if (matchMinutes >= 48) {
-        const homeScore = 95 + Math.floor(Math.random() * 35);
-        const awayScore = 95 + Math.floor(Math.random() * 35);
+        const homeScore = 95 + Math.floor(seededValue(matchId * 13, 0, 35));
+        const awayScore = 95 + Math.floor(seededValue(matchId * 17, 0, 35));
         return {
           status: 'finished',
           homeScore,
@@ -152,13 +167,18 @@ function generateMatchStatus(startTime: Date, sport: string): {
       } else {
         const quarter = Math.min(Math.floor(matchMinutes / 12) + 1, 4);
         const quarterMinute = matchMinutes % 12;
-        const homeScore = Math.floor((95 + Math.random() * 35) * (matchMinutes / 48));
-        const awayScore = Math.floor((95 + Math.random() * 35) * (matchMinutes / 48));
+        const seconds = Math.floor(seededValue(matchId * 19, 0, 60));
+        const finalHomeScore = 95 + Math.floor(seededValue(matchId * 13, 0, 35));
+        const finalAwayScore = 95 + Math.floor(seededValue(matchId * 17, 0, 35));
+        // Scale scores based on match progress
+        const progress = matchMinutes / 48;
+        const homeScore = Math.floor(finalHomeScore * progress);
+        const awayScore = Math.floor(finalAwayScore * progress);
         return {
           status: 'live',
           homeScore,
           awayScore,
-          matchTime: `Q${quarter} ${quarterMinute}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+          matchTime: `Q${quarter} ${quarterMinute}:${String(seconds).padStart(2, '0')}`,
           isFinished: false
         };
       }
@@ -169,8 +189,8 @@ function generateMatchStatus(startTime: Date, sport: string): {
       const matchMinutes = Math.floor(timeDiff / (1000 * 60));
       
       if (matchMinutes >= 60) {
-        const homeScore = Math.floor(Math.random() * 35) + 10;
-        const awayScore = Math.floor(Math.random() * 35) + 10;
+        const homeScore = Math.floor(seededValue(matchId * 23, 10, 45));
+        const awayScore = Math.floor(seededValue(matchId * 29, 10, 45));
         return {
           status: 'finished',
           homeScore,
@@ -181,13 +201,17 @@ function generateMatchStatus(startTime: Date, sport: string): {
       } else {
         const quarter = Math.min(Math.floor(matchMinutes / 15) + 1, 4);
         const quarterMinute = 15 - (matchMinutes % 15);
-        const homeScore = Math.floor((Math.random() * 35 + 10) * (matchMinutes / 60));
-        const awayScore = Math.floor((Math.random() * 35 + 10) * (matchMinutes / 60));
+        const seconds = Math.floor(seededValue(matchId * 31, 0, 60));
+        const finalHomeScore = Math.floor(seededValue(matchId * 23, 10, 45));
+        const finalAwayScore = Math.floor(seededValue(matchId * 29, 10, 45));
+        const progress = matchMinutes / 60;
+        const homeScore = Math.floor(finalHomeScore * progress);
+        const awayScore = Math.floor(finalAwayScore * progress);
         return {
           status: 'live',
           homeScore,
           awayScore,
-          matchTime: `Q${quarter} ${quarterMinute}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+          matchTime: `Q${quarter} ${quarterMinute}:${String(seconds).padStart(2, '0')}`,
           isFinished: false
         };
       }
@@ -198,8 +222,8 @@ function generateMatchStatus(startTime: Date, sport: string): {
       const matchMinutes = Math.floor(timeDiff / (1000 * 60));
       
       if (matchMinutes >= 180) {
-        const homeScore = Math.floor(Math.random() * 8);
-        const awayScore = Math.floor(Math.random() * 8);
+        const homeScore = Math.floor(seededValue(matchId * 37, 0, 10));
+        const awayScore = Math.floor(seededValue(matchId * 41, 0, 10));
         return {
           status: 'finished',
           homeScore,
@@ -210,8 +234,11 @@ function generateMatchStatus(startTime: Date, sport: string): {
       } else {
         const inning = Math.min(Math.floor(matchMinutes / 20) + 1, 9);
         const topBottom = matchMinutes % 20 < 10 ? 'Top' : 'Bot';
-        const homeScore = Math.floor(Math.random() * 8 * (matchMinutes / 180));
-        const awayScore = Math.floor(Math.random() * 8 * (matchMinutes / 180));
+        const finalHomeScore = Math.floor(seededValue(matchId * 37, 0, 10));
+        const finalAwayScore = Math.floor(seededValue(matchId * 41, 0, 10));
+        const progress = matchMinutes / 180;
+        const homeScore = Math.floor(finalHomeScore * progress);
+        const awayScore = Math.floor(finalAwayScore * progress);
         return {
           status: 'live',
           homeScore,
@@ -227,8 +254,8 @@ function generateMatchStatus(startTime: Date, sport: string): {
       const matchMinutes = Math.floor(timeDiff / (1000 * 60));
       
       if (matchMinutes >= 60) {
-        const homeScore = Math.floor(Math.random() * 6);
-        const awayScore = Math.floor(Math.random() * 6);
+        const homeScore = Math.floor(seededValue(matchId * 43, 0, 7));
+        const awayScore = Math.floor(seededValue(matchId * 47, 0, 7));
         return {
           status: 'finished',
           homeScore,
@@ -239,13 +266,17 @@ function generateMatchStatus(startTime: Date, sport: string): {
       } else {
         const period = Math.min(Math.floor(matchMinutes / 20) + 1, 3);
         const periodMinute = matchMinutes % 20;
-        const homeScore = Math.floor(Math.random() * 6 * (matchMinutes / 60));
-        const awayScore = Math.floor(Math.random() * 6 * (matchMinutes / 60));
+        const seconds = Math.floor(seededValue(matchId * 53, 0, 60));
+        const finalHomeScore = Math.floor(seededValue(matchId * 43, 0, 7));
+        const finalAwayScore = Math.floor(seededValue(matchId * 47, 0, 7));
+        const progress = matchMinutes / 60;
+        const homeScore = Math.floor(finalHomeScore * progress);
+        const awayScore = Math.floor(finalAwayScore * progress);
         return {
           status: 'live',
           homeScore,
           awayScore,
-          matchTime: `P${period} ${periodMinute}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+          matchTime: `P${period} ${periodMinute}:${String(seconds).padStart(2, '0')}`,
           isFinished: false
         };
       }
@@ -254,7 +285,7 @@ function generateMatchStatus(startTime: Date, sport: string): {
     case 'mma': {
       // MMA: 3 or 5 rounds of 5 minutes each
       const matchMinutes = Math.floor(timeDiff / (1000 * 60));
-      const totalRounds = Math.random() > 0.5 ? 5 : 3;
+      const totalRounds = seededRandom(matchId * 59) > 0.5 ? 5 : 3;
       const totalMinutes = totalRounds * 5;
       
       if (matchMinutes >= totalMinutes) {
@@ -266,9 +297,10 @@ function generateMatchStatus(startTime: Date, sport: string): {
       } else {
         const round = Math.min(Math.floor(matchMinutes / 5) + 1, totalRounds);
         const roundMinute = 5 - (matchMinutes % 5);
+        const seconds = Math.floor(seededValue(matchId * 61, 0, 60));
         return {
           status: 'live',
-          matchTime: `R${round} ${roundMinute}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+          matchTime: `R${round} ${roundMinute}:${String(seconds).padStart(2, '0')}`,
           isFinished: false
         };
       }
@@ -286,8 +318,8 @@ function generateMatchStatus(startTime: Date, sport: string): {
         };
       } else {
         const set = Math.min(Math.floor(matchMinutes / 30) + 1, 3);
-        const homeGames = Math.floor(Math.random() * 7);
-        const awayGames = Math.floor(Math.random() * 7);
+        const homeGames = Math.floor(seededValue(matchId * 67, 0, 7));
+        const awayGames = Math.floor(seededValue(matchId * 71, 0, 7));
         return {
           status: 'live',
           homeScore: homeGames,
@@ -303,20 +335,32 @@ function generateMatchStatus(startTime: Date, sport: string): {
   }
 }
 
+// Helper to generate consistent start times based on current day
+function getConsistentStartTime(matchId: number, minHours: number, maxHours: number): Date {
+  // Get start of current day
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  
+  // Use seeded random to generate consistent offset
+  const hoursOffset = seededValue(matchId * 73, minHours, maxHours);
+  return new Date(startOfDay.getTime() + hoursOffset * 60 * 60 * 1000);
+}
+
 // Generate NBA games
 function generateNBAGames(count: number, startId: number): Bet[] {
   const games: Bet[] = [];
-  const shuffledTeams = shuffleArray(teams.nba);
+  // Use fixed seed to ensure consistent team order across refreshes
+  const shuffledTeams = shuffleArray(teams.nba, 10001);
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
-    const { homeOdds, awayOdds } = generateBalancedOdds();
-    // Generate some games in the past (live/finished), some upcoming
-    const hoursOffset = Math.floor(Math.random() * 48) - 24; // -24 to +24 hours
-    const startTime = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
-    const matchStatus = generateMatchStatus(startTime, 'Basketball');
+    const matchId = startId + i;
+    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    // Generate consistent start times: some in past (live/finished), some upcoming
+    const startTime = getConsistentStartTime(matchId, -24, 48);
+    const matchStatus = generateMatchStatus(startTime, 'Basketball', matchId);
     
     games.push({
-      id: (startId + i).toString(),
+      id: matchId.toString(),
       sport: 'Basketball',
       league: 'NBA',
       homeTeam: shuffledTeams[i * 2],
@@ -335,16 +379,17 @@ function generateNBAGames(count: number, startId: number): Bet[] {
 // Generate NFL games
 function generateNFLGames(count: number, startId: number): Bet[] {
   const games: Bet[] = [];
-  const shuffledTeams = shuffleArray(teams.nfl);
+  // Use fixed seed to ensure consistent team order across refreshes
+  const shuffledTeams = shuffleArray(teams.nfl, 20002);
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
-    const { homeOdds, awayOdds } = generateBalancedOdds();
-    const hoursOffset = Math.floor(Math.random() * 72) - 36; // -36 to +36 hours
-    const startTime = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
-    const matchStatus = generateMatchStatus(startTime, 'Football');
+    const matchId = startId + i;
+    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const startTime = getConsistentStartTime(matchId, -36, 60);
+    const matchStatus = generateMatchStatus(startTime, 'Football', matchId);
     
     games.push({
-      id: (startId + i).toString(),
+      id: matchId.toString(),
       sport: 'Football',
       league: 'NFL',
       homeTeam: shuffledTeams[i * 2],
@@ -364,27 +409,28 @@ function generateNFLGames(count: number, startId: number): Bet[] {
 function generateSoccerGames(count: number, startId: number): Bet[] {
   const games: Bet[] = [];
   const leagues = [
-    { name: 'Premier League', teams: teams.soccer.premierLeague },
-    { name: 'La Liga', teams: teams.soccer.laLiga },
-    { name: 'Serie A', teams: teams.soccer.serieA },
+    { name: 'Premier League', teams: teams.soccer.premierLeague, seed: 30003 },
+    { name: 'La Liga', teams: teams.soccer.laLiga, seed: 30103 },
+    { name: 'Serie A', teams: teams.soccer.serieA, seed: 30203 },
   ];
   
   let gameId = startId;
   const gamesPerLeague = Math.ceil(count / leagues.length);
   
   leagues.forEach(league => {
-    const shuffledTeams = shuffleArray(league.teams);
+    // Use fixed seed per league to ensure consistent team order across refreshes
+    const shuffledTeams = shuffleArray(league.teams, league.seed);
     const numGames = Math.min(gamesPerLeague, Math.floor(shuffledTeams.length / 2));
     
     for (let i = 0; i < numGames; i++) {
-      const { homeOdds, awayOdds } = generateBalancedOdds();
-      const drawOdds = generateOdds(2.8, 3.8);
-      const hoursOffset = Math.floor(Math.random() * 96) - 48; // -48 to +48 hours
-      const startTime = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
-      const matchStatus = generateMatchStatus(startTime, 'Soccer');
+      const matchId = gameId;
+      const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+      const drawOdds = generateOdds(matchId + 1000, 2.8, 3.8);
+      const startTime = getConsistentStartTime(matchId, -48, 72);
+      const matchStatus = generateMatchStatus(startTime, 'Soccer', matchId);
       
       games.push({
-        id: gameId.toString(),
+        id: matchId.toString(),
         sport: 'Soccer',
         league: league.name,
         homeTeam: shuffledTeams[i * 2],
@@ -407,16 +453,17 @@ function generateSoccerGames(count: number, startId: number): Bet[] {
 // Generate MLB games
 function generateMLBGames(count: number, startId: number): Bet[] {
   const games: Bet[] = [];
-  const shuffledTeams = shuffleArray(teams.mlb);
+  // Use fixed seed to ensure consistent team order across refreshes
+  const shuffledTeams = shuffleArray(teams.mlb, 40004);
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
-    const { homeOdds, awayOdds } = generateBalancedOdds();
-    const hoursOffset = Math.floor(Math.random() * 36) - 18; // -18 to +18 hours
-    const startTime = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
-    const matchStatus = generateMatchStatus(startTime, 'Baseball');
+    const matchId = startId + i;
+    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const startTime = getConsistentStartTime(matchId, -18, 36);
+    const matchStatus = generateMatchStatus(startTime, 'Baseball', matchId);
     
     games.push({
-      id: (startId + i).toString(),
+      id: matchId.toString(),
       sport: 'Baseball',
       league: 'MLB',
       homeTeam: shuffledTeams[i * 2],
@@ -435,16 +482,17 @@ function generateMLBGames(count: number, startId: number): Bet[] {
 // Generate NHL games
 function generateNHLGames(count: number, startId: number): Bet[] {
   const games: Bet[] = [];
-  const shuffledTeams = shuffleArray(teams.nhl);
+  // Use fixed seed to ensure consistent team order across refreshes
+  const shuffledTeams = shuffleArray(teams.nhl, 50005);
   
   for (let i = 0; i < count && i * 2 < shuffledTeams.length; i++) {
-    const { homeOdds, awayOdds } = generateBalancedOdds();
-    const hoursOffset = Math.floor(Math.random() * 48) - 24; // -24 to +24 hours
-    const startTime = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
-    const matchStatus = generateMatchStatus(startTime, 'Hockey');
+    const matchId = startId + i;
+    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const startTime = getConsistentStartTime(matchId, -24, 48);
+    const matchStatus = generateMatchStatus(startTime, 'Hockey', matchId);
     
     games.push({
-      id: (startId + i).toString(),
+      id: matchId.toString(),
       sport: 'Hockey',
       league: 'NHL',
       homeTeam: shuffledTeams[i * 2],
@@ -465,10 +513,10 @@ function generateMMAEvents(count: number, startId: number): Bet[] {
   const events: Bet[] = [];
   
   for (let i = 0; i < count; i++) {
-    const { homeOdds, awayOdds } = generateBalancedOdds();
-    const hoursOffset = Math.floor(Math.random() * 168) - 84; // -84 to +84 hours
-    const startTime = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
-    const matchStatus = generateMatchStatus(startTime, 'MMA');
+    const matchId = startId + i;
+    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const startTime = getConsistentStartTime(matchId, -84, 120);
+    const matchStatus = generateMatchStatus(startTime, 'MMA', matchId);
     
     const fighters = [
       ['Jon Jones', 'Stipe Miocic'],
@@ -481,7 +529,7 @@ function generateMMAEvents(count: number, startId: number): Bet[] {
     const fighterPair = fighters[i % fighters.length];
     
     events.push({
-      id: (startId + i).toString(),
+      id: matchId.toString(),
       sport: 'MMA',
       league: 'UFC',
       homeTeam: fighterPair[0],
@@ -500,20 +548,22 @@ function generateMMAEvents(count: number, startId: number): Bet[] {
 // Generate Tennis matches
 function generateTennisMatches(count: number, startId: number): Bet[] {
   const matches: Bet[] = [];
-  const shuffledPlayers = shuffleArray(teams.tennis);
+  // Use fixed seed to ensure consistent player order across refreshes
+  const shuffledPlayers = shuffleArray(teams.tennis, 60006);
   
   for (let i = 0; i < count && i * 2 < shuffledPlayers.length; i++) {
-    const { homeOdds, awayOdds } = generateBalancedOdds();
-    const hoursOffset = Math.floor(Math.random() * 72) - 36; // -36 to +36 hours
-    const startTime = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
-    const matchStatus = generateMatchStatus(startTime, 'Tennis');
+    const matchId = startId + i;
+    const { homeOdds, awayOdds } = generateBalancedOdds(matchId);
+    const startTime = getConsistentStartTime(matchId, -36, 60);
+    const matchStatus = generateMatchStatus(startTime, 'Tennis', matchId);
     
     const tournaments = ['Australian Open', 'French Open', 'Wimbledon', 'US Open', 'ATP Finals'];
+    const tournamentIndex = Math.floor(seededValue(matchId * 79, 0, tournaments.length));
     
     matches.push({
-      id: (startId + i).toString(),
+      id: matchId.toString(),
       sport: 'Tennis',
-      league: tournaments[Math.floor(Math.random() * tournaments.length)],
+      league: tournaments[tournamentIndex],
       homeTeam: shuffledPlayers[i * 2],
       awayTeam: shuffledPlayers[i * 2 + 1],
       homeOdds,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSportsData } from '@/hooks/useSportsData';
 import BetCard from './BetCard';
 import LoadingSpinner from './LoadingSpinner';
@@ -16,21 +16,15 @@ interface LiveBettingFeedProps {
 export default function LiveBettingFeed({ onBetSelection }: LiveBettingFeedProps) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   
-  // Use the custom hook to fetch data from the API
-  const { bets, loading, error, refetch, categories } = useSportsData({
+  // Use the custom hook to fetch data from the API with auto-refresh
+  const { bets: allBets, loading, error, refetch, categories } = useSportsData({
     category: selectedCategory,
     limit: 20,
+    refreshInterval: 5000, // Auto-refresh every 2 seconds
   });
 
-  // Auto-refresh data every 2 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refetch();
-    }, 2000);
-
-    // Cleanup interval on unmount
-    return () => clearInterval(interval);
-  }, [refetch]);
+  // Filter out finished games
+  const bets = allBets.filter(bet => bet.status !== 'finished' && !bet.isFinished);
 
   const handleBetSelection = (betId: string, team: string, odds: number) => {
     onBetSelection?.(betId, team, odds);

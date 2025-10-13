@@ -70,3 +70,11 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3a4152;
 }
+
+.wallet-adapter-modal-list{
+  padding: 0px 30px;
+}
+
+.wallet-adapter-modal-list li{
+  margin-bottom: 10px;
+}
