@@ -8,6 +8,12 @@ function adjustOdds(baseOdds: number): number {
   return Math.max(1.01, parseFloat(adjusted.toFixed(2))); // Ensure odds stay above 1.01
 }
 
+// Helper function to generate random match time between 40-60 minutes
+function generateRandomMatchTime(): string {
+  const minutes = Math.floor(Math.random() * 21) + 40; // Random between 40-60
+  return `${minutes}'`;
+}
+
 // LIVE games data - Converted from Portuguese data structure
 const STATIC_GAMES: Bet[] = [
   // Soccer - World Cup Qualifiers
@@ -486,12 +492,14 @@ export async function GET(request: NextRequest) {
       filteredGames = STATIC_GAMES.filter(game => game.category === category);
     }
     
-    // Apply limit and adjust odds dynamically
+    // Apply limit and adjust odds dynamically, and generate random match times for live games
     const limitedGames = filteredGames.slice(0, limit).map(game => ({
       ...game,
       homeOdds: adjustOdds(game.homeOdds),
       awayOdds: adjustOdds(game.awayOdds),
       ...(game.drawOdds ? { drawOdds: adjustOdds(game.drawOdds) } : {}),
+      // Generate random match time for live games (40-60 minutes)
+      ...(game.status === 'live' ? { matchTime: generateRandomMatchTime() } : {}),
     }));
     
     return NextResponse.json({

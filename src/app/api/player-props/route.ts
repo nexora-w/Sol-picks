@@ -8,6 +8,12 @@ function adjustOdds(baseOdds: number): number {
   return Math.max(1.01, parseFloat(adjusted.toFixed(2))); // Ensure odds stay above 1.01
 }
 
+// Helper function to generate random match time between 40-60 minutes
+function generateRandomMatchTime(): string {
+  const minutes = Math.floor(Math.random() * 21) + 40; // Random between 40-60
+  return `${minutes}'`;
+}
+
 
 // LIVE player props - Real props for games happening in the next 2 hours (Oct 14, 2025 ~7 PM ET)
 const STATIC_PROPS: PlayerProp[] = [
@@ -351,11 +357,13 @@ export async function GET(request: NextRequest) {
       filteredProps = STATIC_PROPS.filter(prop => prop.category === category);
     }
     
-    // Apply limit and adjust odds dynamically
+    // Apply limit and adjust odds dynamically, and generate random match times for live games
     const limitedProps = filteredProps.slice(0, limit).map(prop => ({
       ...prop,
       overOdds: adjustOdds(prop.overOdds),
       underOdds: adjustOdds(prop.underOdds),
+      // Generate random match time for live games (40-60 minutes)
+      ...(prop.status === 'live' ? { matchTime: generateRandomMatchTime() } : {}),
     }));
     
     return NextResponse.json({
