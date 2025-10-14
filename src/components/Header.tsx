@@ -4,6 +4,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 interface HeaderProps {
   betType?: 'matches' | 'props';
@@ -32,7 +33,12 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-6">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">
-              SolPicks
+              <Image 
+                src="/logo/logo.png" 
+                alt="SolPicks" 
+                width={300} 
+                height={300} 
+              />
             </h1>
             
             {/* Bet Type Toggle */}
