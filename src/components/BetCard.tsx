@@ -34,29 +34,6 @@ export default function BetCard({ bet, onPlaceBet, selectedBets = [] }: BetCardP
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
-  const getStatusBadge = () => {
-    switch (bet.status) {
-      case 'live':
-        return (
-          <div className="px-2 py-1 bg-red-500 rounded text-xs text-white font-semibold animate-pulse">
-            🔴 LIVE
-          </div>
-        );
-      case 'finished':
-        return (
-          <div className="px-2 py-1 bg-gray-600 rounded text-xs text-gray-300">
-            FINISHED
-          </div>
-        );
-      default:
-        return (
-          <div className="px-2 py-1 bg-green-600 rounded text-xs text-white">
-            UPCOMING
-          </div>
-        );
-    }
-  };
-
   const isFinished = bet.status === 'finished';
 
   return (
@@ -88,7 +65,6 @@ export default function BetCard({ bet, onPlaceBet, selectedBets = [] }: BetCardP
             </div>
           )}
         </div>
-        {getStatusBadge()}
       </div>
 
       <div className="space-y-2">

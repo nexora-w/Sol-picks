@@ -85,29 +85,6 @@ export default function PlayerPropCard({ prop, onPlaceBet, selectedBets = [], al
     return formats[statType] || statType.toUpperCase();
   };
 
-  const getStatusBadge = () => {
-    switch (prop.status) {
-      case 'live':
-        return (
-          <div className="px-2 py-1 bg-red-500 rounded text-xs text-white font-semibold animate-pulse">
-            🔴 LIVE
-          </div>
-        );
-      case 'finished':
-        return (
-          <div className="px-2 py-1 bg-gray-600 rounded text-xs text-gray-300">
-            FINISHED
-          </div>
-        );
-      default:
-        return (
-          <div className="px-2 py-1 bg-green-600 rounded text-xs text-white">
-            UPCOMING
-          </div>
-        );
-    }
-  };
-
   const isFinished = prop.status === 'finished';
 
   return (
@@ -142,7 +119,6 @@ export default function PlayerPropCard({ prop, onPlaceBet, selectedBets = [], al
             )}
           </div>
         </div>
-        {getStatusBadge()}
       </div>
 
       {/* Player Info */}

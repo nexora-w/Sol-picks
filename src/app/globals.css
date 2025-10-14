@@ -78,3 +78,27 @@ body {
 .wallet-adapter-modal-list li{
   margin-bottom: 10px;
 }
+
+/* Mobile Header Responsive Styles */
+@media (max-width: 640px) {
+  .wallet-adapter-button {
+    font-size: 0.75rem !important;
+    padding: 0.5rem 0.75rem !important;
+    min-width: auto !important;
+  }
+  
+  .wallet-button-container {
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .wallet-adapter-button {
+    font-size: 0.7rem !important;
+    padding: 0.4rem 0.6rem !important;
+  }
+  
+  .wallet-button-container {
+    max-width: 100px;
+  }
+}
