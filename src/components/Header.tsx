@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 
-const CA = "comming______soon";
+const CA = "EVWvQM75h3kPwcAMbvjrP22qj9ENCqgDRnbmEe5Kpump";
 
 interface HeaderProps {
   betType?: "matches" | "props";

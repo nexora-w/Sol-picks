@@ -40,7 +40,7 @@ export default function Footer() {
 
         <div className="border-t border-[#2a3142] mt-8 pt-8 flex flex-col sm:flex-row justify-center items-center">
           <p className="text-gray-400 text-sm">
-            © 2025 SolPick. Built on Solana.
+            © 2025 SOLPICKS. Built on Solana.
           </p>
         </div>
       </div>
