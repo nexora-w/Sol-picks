@@ -7,6 +7,9 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+
+const CA = "comming______soon";
+
 interface HeaderProps {
   betType?: "matches" | "props";
   onBetTypeChange?: (type: "matches" | "props") => void;
@@ -58,19 +61,35 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
     }
   };
 
+  const formatContractAddress = (address: string | undefined, isMobile: boolean = false) => {
+    if (!address || address === "Comming soon") {
+      return address || "Comming soon";
+    }
+    
+    if (isMobile && address.length > 8) {
+      return `${address.slice(0, 4)}...${address.slice(-4)}`;
+    }
+    
+    return address;
+  };
+
   return (
     <div className="sticky top-0 z-50">
       <div className="text-center border-b border-[#2a3142] py-2 bg-[#9810fa] text-white">
         <div className="flex items-center justify-center gap-2">
           <span>
-            Contract Address:{" "}
-            {process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-              "Comming soon"}
+            <span className="hidden sm:inline">Contract Address: </span>
+            <span className="sm:hidden">CA: </span>
+            <span className="hidden sm:inline">{CA}</span>
+            <span className="sm:hidden">{formatContractAddress(
+              CA,
+              true
+            )}</span>
           </span>
           <button
             onClick={() => {
               const contractAddress =
-                process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+                CA ||
                 "Comming soon";
               copyToClipboard(contractAddress);
             }}
@@ -249,16 +268,19 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
                 {/* Mobile Contract Address */}
                 <div className="bg-[#1a1f2e] px-4 py-3 rounded-lg border border-[#2a3142] mb-4">
                   <div className="text-xs text-gray-400 mb-2">
-                    Contract Address
+                    CA
                   </div>
                   <div className="flex items-center gap-2">
                     <code className="text-xs text-blue-400 font-mono flex-1 break-all">
-                      {process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x..."}
+                      {formatContractAddress(
+                        CA,
+                        true
+                      ) || "0x..."}
                     </code>
                     <button
                       onClick={() => {
                         const contractAddress =
-                          process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+                          CA;
                         if (contractAddress) {
                           copyToClipboard(contractAddress);
                         }
