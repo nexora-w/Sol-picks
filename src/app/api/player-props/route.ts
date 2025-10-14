@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PlayerProp } from '@/types/betting';
 
+// Helper function to slightly adjust odds on each request (simulates real-time odds changes)
+function adjustOdds(baseOdds: number): number {
+  const variance = (Math.random() - 0.5) * 0.3; // +/- 0.15 variance
+  const adjusted = baseOdds + variance;
+  return Math.max(1.01, parseFloat(adjusted.toFixed(2))); // Ensure odds stay above 1.01
+}
+
 // LIVE player data - Real players in games happening in the next 2 hours (Oct 14, 2025 ~7 PM ET)
 const STATIC_PLAYERS = [
   { name: 'Giannis Antetokounmpo', team: 'Bucks', position: 'PF', sport: 'Basketball', league: 'NBA', image: 'https://cdn.nba.com/headshots/nba/latest/1040x760/203507.png' },
@@ -221,8 +228,12 @@ export async function GET(request: NextRequest) {
       filteredProps = STATIC_PROPS.filter(prop => prop.category === category);
     }
     
-    // Apply limit
-    const limitedProps = filteredProps.slice(0, limit);
+    // Apply limit and adjust odds dynamically
+    const limitedProps = filteredProps.slice(0, limit).map(prop => ({
+      ...prop,
+      overOdds: adjustOdds(prop.overOdds),
+      underOdds: adjustOdds(prop.underOdds),
+    }));
     
     return NextResponse.json({
       success: true,

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Bet } from '@/types/betting';
 
+// Helper function to slightly adjust odds on each request (simulates real-time odds changes)
+function adjustOdds(baseOdds: number): number {
+  const variance = (Math.random() - 0.5) * 0.3; // +/- 0.15 variance
+  const adjusted = baseOdds + variance;
+  return Math.max(1.01, parseFloat(adjusted.toFixed(2))); // Ensure odds stay above 1.01
+}
+
 // LIVE games data - Real matches happening in the next 2 hours (as of Oct 14, 2025 ~7 PM ET)
 const STATIC_GAMES: Bet[] = [
   {
@@ -200,8 +207,13 @@ export async function GET(request: NextRequest) {
       filteredGames = STATIC_GAMES.filter(game => game.category === category);
     }
     
-    // Apply limit
-    const limitedGames = filteredGames.slice(0, limit);
+    // Apply limit and adjust odds dynamically
+    const limitedGames = filteredGames.slice(0, limit).map(game => ({
+      ...game,
+      homeOdds: adjustOdds(game.homeOdds),
+      awayOdds: adjustOdds(game.awayOdds),
+      ...(game.drawOdds ? { drawOdds: adjustOdds(game.drawOdds) } : {}),
+    }));
     
     return NextResponse.json({
       success: true,
