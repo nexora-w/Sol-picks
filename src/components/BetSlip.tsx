@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useBetting } from '@/hooks/useBetting';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
+import { Bet, PlayerProp } from '@/types/betting';
 
 interface BetSelection {
   betId: string;
@@ -15,8 +16,8 @@ interface BetSlipProps {
   selections: BetSelection[];
   onRemoveBet: (betId: string, team: string) => void;
   onClearAll: () => void;
-  bets?: any[];
-  playerProps?: any[];
+  bets?: Bet[];
+  playerProps?: PlayerProp[];
 }
 
 export default function BetSlip({ selections, onRemoveBet, onClearAll, bets = [], playerProps = [] }: BetSlipProps) {

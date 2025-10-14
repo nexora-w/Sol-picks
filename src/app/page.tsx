@@ -156,7 +156,7 @@ export default function Home() {
         setBetSelections(updatedSelections);
       }
     }
-  }, [bets, playerProps, updateBetSlipOdds]);
+  }, [bets, playerProps, updateBetSlipOdds, betSelections]);
 
   return (
     <div className="min-h-screen bg-[#0f1419]">
