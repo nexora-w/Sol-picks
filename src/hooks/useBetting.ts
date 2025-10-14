@@ -25,7 +25,7 @@ export const useBetting = () => {
       setIsProcessing(true);
       try {
         // In a real application, this would be your betting program's public key
-        const bettingProgramId = new PublicKey('J3KGVpPc6sBLZbtZH2LRjvYv6EjTgAKf6BkpjALkV8qe');
+        const bettingProgramId = new PublicKey('2Nav5H3sBM4d3CAUhsk9ZEuhLGhQCgDByNHeSXGFUgR2');
         
         const transaction = new Transaction().add(
           SystemProgram.transfer({
@@ -74,7 +74,7 @@ export const useBetting = () => {
       setIsProcessing(true);
       try {
         // In a real application, this would be your betting program's public key
-        const bettingProgramId = new PublicKey('J3KGVpPc6sBLZbtZH2LRjvYv6EjTgAKf6BkpjALkV8qe');
+        const bettingProgramId = new PublicKey('2Nav5H3sBM4d3CAUhsk9ZEuhLGhQCgDByNHeSXGFUgR2');
         
         // Calculate total amount
         const totalAmount = bets.reduce((sum, bet) => sum + bet.amount, 0);
