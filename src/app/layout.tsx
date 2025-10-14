@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SolPick - Solana Sports Betting",
+  title: "SolPicks - Solana Sports Betting",
   description: "Decentralized sports betting on Solana",
 };
 
