@@ -50,15 +50,6 @@ export default function BetCard({ bet, onPlaceBet, selectedBets = [] }: BetCardP
               </div>
             )}
           </div>
-          <div className="text-sm text-gray-500">
-            {bet.status === 'upcoming' && `Starts in ${formatTime(bet.startTime)}`}
-            {bet.status === 'live' && (
-              <span className="text-yellow-400 font-semibold">{bet.matchTime}</span>
-            )}
-            {bet.status === 'finished' && (
-              <span className="text-gray-500">{bet.matchTime}</span>
-            )}
-          </div>
           {(bet.status === 'live' || bet.status === 'finished') && bet.homeScore !== undefined && bet.awayScore !== undefined && (
             <div className="text-lg font-bold text-white mt-2">
               {bet.homeScore} - {bet.awayScore}

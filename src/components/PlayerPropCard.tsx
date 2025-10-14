@@ -109,15 +109,6 @@ export default function PlayerPropCard({ prop, onPlaceBet, selectedBets = [], al
           <div className="text-sm text-gray-500 mb-1">
             {prop.homeTeam} vs {prop.awayTeam}
           </div>
-          <div className="text-sm text-gray-500">
-            {prop.status === 'upcoming' && `Starts in ${formatTime(prop.startTime)}`}
-            {prop.status === 'live' && (
-              <span className="text-yellow-400 font-semibold">{prop.matchTime}</span>
-            )}
-            {prop.status === 'finished' && (
-              <span className="text-gray-500">Final</span>
-            )}
-          </div>
         </div>
       </div>
 

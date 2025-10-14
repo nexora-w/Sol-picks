@@ -59,7 +59,7 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
   };
 
   return (
-    <>
+    <div className="sticky top-0 z-50">
       <div className="text-center border-b border-[#2a3142] py-2 bg-[#9810fa] text-white">
         <div className="flex items-center justify-center gap-2">
           <span>
@@ -111,7 +111,7 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
           </button>
         </div>
       </div>
-      <header className="bg-[#141821] border-b border-[#2a3142] sticky top-0 z-50">
+      <header className="bg-[#141821] border-b border-[#2a3142]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Main Header Row */}
           <div className="flex justify-between items-center h-16">
@@ -343,6 +343,6 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
           )}
         </div>
       </header>
-    </>
+    </div>
   );
 }
