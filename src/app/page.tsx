@@ -22,7 +22,7 @@ interface BetSelection {
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [betSelections, setBetSelections] = useState<BetSelection[]>([]);
-  const [betType, setBetType] = useState<'matches' | 'props'>('matches');
+  const [betType, setBetType] = useState<'props' | 'matches'>('props');
   const { placedBets } = useBetting();
   
   // Fetch sports data from API with auto-refresh every 5 seconds

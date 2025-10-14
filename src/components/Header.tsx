@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 
 interface HeaderProps {
-  betType?: 'matches' | 'props';
-  onBetTypeChange?: (type: 'matches' | 'props') => void;
+  betType?: "matches" | "props";
+  onBetTypeChange?: (type: "matches" | "props") => void;
 }
 
 export default function Header({ betType, onBetTypeChange }: HeaderProps) {
@@ -33,36 +33,36 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-6">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">
-              <Image 
-                src="/logo/logo.png" 
-                alt="SolPicks" 
-                width={300} 
-                height={300} 
+              <Image
+                src="/logo/logo.png"
+                alt="SolPicks"
+                width={300}
+                height={300}
               />
             </h1>
-            
+
             {/* Bet Type Toggle */}
             {betType && onBetTypeChange && (
               <div className="flex gap-6 items-end">
                 <button
-                  onClick={() => onBetTypeChange('matches')}
+                  onClick={() => onBetTypeChange("props")}
                   className={`font-medium transition-colors cursor-pointer ${
-                    betType === 'matches'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-gray-200'
-                  }`}
-                >
-                  Match Bets
-                </button>
-                <button
-                  onClick={() => onBetTypeChange('props')}
-                  className={`font-medium transition-colors cursor-pointer ${
-                    betType === 'props'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-gray-200'
+                    betType === "props"
+                      ? "text-white"
+                      : "text-gray-400 hover:text-gray-200"
                   }`}
                 >
                   Player Props 🔥
+                </button>
+                <button
+                  onClick={() => onBetTypeChange("matches")}
+                  className={`font-medium transition-colors cursor-pointer ${
+                    betType === "matches"
+                      ? "text-white"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  Match Bets
                 </button>
               </div>
             )}
@@ -72,7 +72,9 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
             {publicKey && balance !== null && (
               <div className="bg-[#1a1f2e] px-4 py-2 rounded-lg border border-[#2a3142]">
                 <div className="text-xs text-gray-400">Balance</div>
-                <div className="text-white font-bold">{balance.toFixed(2)} SOL</div>
+                <div className="text-white font-bold">
+                  {balance.toFixed(2)} SOL
+                </div>
               </div>
             )}
             <WalletMultiButton />
@@ -82,4 +84,3 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
     </header>
   );
 }
-
