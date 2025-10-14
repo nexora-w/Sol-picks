@@ -46,7 +46,7 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
               <div className="flex gap-6 items-end">
                 <button
                   onClick={() => onBetTypeChange('matches')}
-                  className={`font-medium transition-colors ${
+                  className={`font-medium transition-colors cursor-pointer ${
                     betType === 'matches'
                       ? 'text-white'
                       : 'text-gray-400 hover:text-gray-200'
@@ -56,7 +56,7 @@ export default function Header({ betType, onBetTypeChange }: HeaderProps) {
                 </button>
                 <button
                   onClick={() => onBetTypeChange('props')}
-                  className={`font-medium transition-colors ${
+                  className={`font-medium transition-colors cursor-pointer ${
                     betType === 'props'
                       ? 'text-white'
                       : 'text-gray-400 hover:text-gray-200'

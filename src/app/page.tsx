@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -66,9 +66,35 @@ export default function Home() {
   const handleBetSelection = (betId: string, team: string, odds: number) => {
     // Check if bet already exists in selections
     const exists = betSelections.some(bet => bet.betId === betId && bet.team === team);
-    if (!exists) {
-      setBetSelections(prev => [...prev, { betId, team, odds }]);
+    if (exists) {
+      return; // Already selected this exact bet
     }
+
+    // Check if there's already a bet on this match (for match bets)
+    const currentBet = bets.find(bet => bet.id === betId);
+    if (currentBet) {
+      const hasBetOnMatch = betSelections.some(bet => bet.betId === betId);
+      if (hasBetOnMatch) {
+        alert('You can only bet on one outcome per match. Please remove your existing bet on this match first.');
+        return;
+      }
+    }
+
+    // Check if there's already a bet on this game (for player props)
+    const currentProp = playerProps.find(prop => prop.id === betId);
+    if (currentProp) {
+      const hasBetOnGame = betSelections.some(bet => {
+        // Find the prop for this bet to check if it's the same game
+        const propForBet = playerProps.find(p => p.id === bet.betId);
+        return propForBet && propForBet.gameId === currentProp.gameId;
+      });
+      if (hasBetOnGame) {
+        alert('You can only bet on one player prop per game. Please remove your existing bet on this game first.');
+        return;
+      }
+    }
+
+    setBetSelections(prev => [...prev, { betId, team, odds }]);
   };
 
   const handleRemoveBet = (betId: string, team: string) => {
@@ -78,6 +104,59 @@ export default function Home() {
   const handleClearAll = () => {
     setBetSelections([]);
   };
+
+  // Update odds in betting slip when API data refreshes
+  const updateBetSlipOdds = useMemo(() => {
+    return (currentSelections: BetSelection[]) => {
+      return currentSelections.map(selection => {
+        // Find the current bet/prop data from API
+        const currentBet = bets.find(bet => bet.id === selection.betId);
+        const currentProp = playerProps.find(prop => prop.id === selection.betId);
+        
+        if (currentBet) {
+          // Update odds for match bets
+          let newOdds = selection.odds;
+          if (selection.team === currentBet.homeTeam) {
+            newOdds = currentBet.homeOdds;
+          } else if (selection.team === currentBet.awayTeam) {
+            newOdds = currentBet.awayOdds;
+          } else if (selection.team === 'Draw' && currentBet.drawOdds) {
+            newOdds = currentBet.drawOdds;
+          }
+          
+          return { ...selection, odds: newOdds };
+        } else if (currentProp) {
+          // Update odds for player props
+          let newOdds = selection.odds;
+          if (selection.team.includes('OVER')) {
+            newOdds = currentProp.overOdds;
+          } else if (selection.team.includes('UNDER')) {
+            newOdds = currentProp.underOdds;
+          }
+          
+          return { ...selection, odds: newOdds };
+        }
+        
+        // Return unchanged if bet/prop not found
+        return selection;
+      });
+    };
+  }, [bets, playerProps]);
+
+  // Update betting slip odds when API data changes
+  useEffect(() => {
+    if (betSelections.length > 0) {
+      const updatedSelections = updateBetSlipOdds(betSelections);
+      // Only update if odds actually changed to avoid unnecessary re-renders
+      const hasChanges = updatedSelections.some((updated, index) => 
+        updated.odds !== betSelections[index].odds
+      );
+      
+      if (hasChanges) {
+        setBetSelections(updatedSelections);
+      }
+    }
+  }, [bets, playerProps, updateBetSlipOdds]);
 
   return (
     <div className="min-h-screen bg-[#0f1419]">
@@ -168,6 +247,7 @@ export default function Home() {
                         key={bet.id}
                         bet={bet}
                         onPlaceBet={handleBetSelection}
+                        selectedBets={betSelections}
                       />
                     ))}
                   </div>
@@ -201,6 +281,8 @@ export default function Home() {
                         key={prop.id}
                         prop={prop}
                         onPlaceBet={handleBetSelection}
+                        selectedBets={betSelections}
+                        allPlayerProps={playerProps}
                       />
                     ))}
                   </div>
@@ -229,6 +311,8 @@ export default function Home() {
                 selections={betSelections}
                 onRemoveBet={handleRemoveBet}
                 onClearAll={handleClearAll}
+                bets={bets}
+                playerProps={playerProps}
               />
             </div>
           </div>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useBetting } from '@/hooks/useBetting';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
 
 interface BetSelection {
   betId: string;
@@ -14,12 +15,46 @@ interface BetSlipProps {
   selections: BetSelection[];
   onRemoveBet: (betId: string, team: string) => void;
   onClearAll: () => void;
+  bets?: any[];
+  playerProps?: any[];
 }
 
-export default function BetSlip({ selections, onRemoveBet, onClearAll }: BetSlipProps) {
+export default function BetSlip({ selections, onRemoveBet, onClearAll, bets = [], playerProps = [] }: BetSlipProps) {
   const [amount, setAmount] = useState('');
+  const [updatedOdds, setUpdatedOdds] = useState<Map<string, 'increase' | 'decrease'>>(new Map());
   const { placeBets, isProcessing } = useBetting();
   const { publicKey } = useWallet();
+  const previousSelections = useRef<BetSelection[]>([]);
+
+  // Track odds changes and show visual feedback
+  useEffect(() => {
+    if (previousSelections.current.length > 0 && selections.length > 0) {
+      const newUpdatedOdds = new Map<string, 'increase' | 'decrease'>();
+      
+      selections.forEach(selection => {
+        const previousSelection = previousSelections.current.find(
+          prev => prev.betId === selection.betId && prev.team === selection.team
+        );
+        
+        if (previousSelection && previousSelection.odds !== selection.odds) {
+          const selectionKey = `${selection.betId}-${selection.team}`;
+          const direction = selection.odds > previousSelection.odds ? 'increase' : 'decrease';
+          newUpdatedOdds.set(selectionKey, direction);
+        }
+      });
+      
+      if (newUpdatedOdds.size > 0) {
+        setUpdatedOdds(newUpdatedOdds);
+        
+        // Clear the highlight after 3 seconds
+        setTimeout(() => {
+          setUpdatedOdds(new Map());
+        }, 3000);
+      }
+    }
+    
+    previousSelections.current = selections;
+  }, [selections]);
 
   const handlePlaceAllBets = async () => {
     if (!publicKey || selections.length === 0 || !amount || parseFloat(amount) <= 0) return;
@@ -52,6 +87,35 @@ export default function BetSlip({ selections, onRemoveBet, onClearAll }: BetSlip
     return selections.reduce((sum, selection) => {
       return sum + (amountNum * selection.odds);
     }, 0);
+  };
+
+  const getMatchInfo = (selection: BetSelection) => {
+    // Check if it's a match bet
+    const match = bets.find(bet => bet.id === selection.betId);
+    if (match) {
+      return {
+        type: 'match',
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        league: match.league,
+        sport: match.sport
+      };
+    }
+
+    // Check if it's a player prop
+    const prop = playerProps.find(prop => prop.id === selection.betId);
+    if (prop) {
+      return {
+        type: 'prop',
+        homeTeam: prop.homeTeam,
+        awayTeam: prop.awayTeam,
+        league: prop.league,
+        sport: prop.sport,
+        playerName: prop.playerName
+      };
+    }
+
+    return null;
   };
 
   if (selections.length === 0) {
@@ -88,14 +152,45 @@ export default function BetSlip({ selections, onRemoveBet, onClearAll }: BetSlip
         {selections.map((selection) => {
           const amountNum = parseFloat(amount || '0');
           const potentialWin = amountNum * selection.odds;
+          const selectionKey = `${selection.betId}-${selection.team}`;
+          const oddsChange = updatedOdds.get(selectionKey);
+          const isOddsUpdated = oddsChange !== undefined;
+          const matchInfo = getMatchInfo(selection);
 
           return (
-            <div key={`${selection.betId}-${selection.team}`} className="p-3 bg-[#252b3d] rounded-lg">
+            <div 
+              key={selectionKey} 
+              className="p-3 bg-[#252b3d] rounded-lg"
+            >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
+                  {matchInfo && (
+                    <div className="text-xs text-gray-400 mb-1">
+                      {matchInfo.league} • {matchInfo.sport}
+                    </div>
+                  )}
+                  {matchInfo && (
+                    <div className="text-xs text-gray-500 mb-2">
+                      {matchInfo.homeTeam} vs {matchInfo.awayTeam}
+                      {matchInfo.type === 'prop' && matchInfo.playerName && (
+                        <span className="ml-2 text-purple-400">• {matchInfo.playerName}</span>
+                      )}
+                    </div>
+                  )}
                   <div className="text-white font-medium text-sm">{selection.team}</div>
                   <div className="flex items-center gap-2">
-                    <div className="text-purple-400 font-bold text-sm">{selection.odds.toFixed(2)}x</div>
+                    <div className="text-purple-400 font-bold text-sm flex items-center justify-center">
+                      {selection.odds.toFixed(2)}x
+                      {isOddsUpdated && (
+                        <span className="ml-1 text-xs animate-pulse">
+                          {oddsChange === 'increase' ? (
+                            <FaArrowUp className="text-green-400" />
+                          ) : (
+                            <FaArrowDown className="text-red-400" />
+                          )}
+                        </span>
+                      )}
+                    </div>
                     {amount && parseFloat(amount) > 0 && (
                       <div className="text-xs text-gray-400">
                         → <span className="text-green-400 font-semibold">{potentialWin.toFixed(2)} SOL</span>

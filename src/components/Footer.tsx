@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="bg-[#141821] border-t border-[#2a3142] mt-16">
@@ -36,8 +38,9 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-4">Community</h4>
             <ul className="space-y-2 text-gray-400 text-sm">
               <li className="hover:text-purple-400 cursor-pointer transition-colors">Discord</li>
-              <li className="hover:text-purple-400 cursor-pointer transition-colors">Twitter</li>
-              <li className="hover:text-purple-400 cursor-pointer transition-colors">Documentation</li>
+              <li className="hover:text-purple-400 cursor-pointer transition-colors">
+                <Link href="https://x.com/solpicksdotfun?s=21">Twitter</Link>
+              </li>
             </ul>
           </div>
         </div>
